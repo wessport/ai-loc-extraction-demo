@@ -156,36 +156,6 @@ Render's free tier:
 
 ---
 
-## Alternative Deployment Options
-
-### Railway
-
-```bash
-railway login
-railway init
-railway add --name OPENAI_API_KEY
-railway up
-```
-
-### Local Production
-
-```bash
-gunicorn app:app --bind 0.0.0.0:8050
-```
-
-### Docker
-
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8050"]
-```
-
----
-
 ## License
 
 MIT
