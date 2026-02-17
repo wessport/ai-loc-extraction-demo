@@ -4,12 +4,14 @@ A demonstration of using GPT-4o-mini to extract structured location data from jo
 
 This project showcases how LLMs can replace manual data extraction tasks at a fraction of the cost (~$0.0002 per extraction).
 
+![Demo](https://res.cloudinary.com/wessport/image/upload/v1768771124/ai-pipeline.png)
+
 ## Features
 
 - Extract primary work location from unstructured job posting text
 - Classify location granularity (street address → city → state → country)
-- Detect remote/hybrid work indicators
-- Interactive web demo via Streamlit
+- Interactive web demo with animated processing visualization
+- Dark/light theme support
 
 ## Quick Start
 
@@ -45,18 +47,22 @@ OPENAI_API_KEY=sk-your-key-here
 ### 4. Run the demo
 
 ```bash
-streamlit run app.py
+python app.py
 ```
+
+Open http://localhost:8050 in your browser.
 
 ## Project Structure
 
 ```
 ai-loc-extraction-demo/
-├── app.py                 # Streamlit web interface
-├── src/
-│   ├── __init__.py
-│   ├── extractor.py       # Core extraction logic
-│   └── prompts.py         # LLM prompt templates
+├── app.py                 # Flask web server
+├── static/
+│   ├── index.html         # Main UI
+│   ├── style.css          # Dark/light theme styles
+│   └── app.js             # Frontend logic & animations
+├── utils/
+│   └── llm_extractor.py   # OpenAI API wrapper
 ├── requirements.txt
 ├── .env.example
 └── README.md
@@ -68,8 +74,8 @@ ai-loc-extraction-demo/
 2. **Processing**: The text is sent to GPT-4o-mini with a structured extraction prompt
 3. **Output**: Returns the most specific location found, along with:
    - Location granularity level
-   - Confidence explanation
-   - Remote/hybrid work indicators
+   - Confidence score
+   - AI explanation of the extraction
 
 ## Cost
 
@@ -80,11 +86,21 @@ Using GPT-4o-mini:
 
 ## Deployment
 
-This app can be deployed for free on:
-- [Streamlit Cloud](https://streamlit.io/cloud) - Connect your GitHub repo
-- [Hugging Face Spaces](https://huggingface.co/spaces) - Free Gradio/Streamlit hosting
+This app can be deployed on:
 - [Render](https://render.com) - Free tier available
+- [Railway](https://railway.app)
+- Any platform supporting Python/Flask
+
+For production, use gunicorn:
+
+```bash
+gunicorn app:app --bind 0.0.0.0:8050
+```
 
 ## License
 
 MIT
+
+## Author
+
+[Wes Porter](https://geoalchemist.com)

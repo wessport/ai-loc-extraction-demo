@@ -1,121 +1,183 @@
-import os
-import streamlit as st
-from openai import OpenAI
-from dotenv import load_dotenv
+#!/usr/bin/env python3
+"""
+AI Location Extraction Demo - Flask Application
 
-from src.extractor import extract_location
+A Flask-based web app for demonstrating AI-powered location extraction
+from job descriptions using OpenAI's GPT-4o-mini.
+
+Author: Wes Porter
+"""
+
+import json
+import logging
+import os
+import time
+
+from flask import Flask, jsonify, request, send_from_directory
+from dotenv import load_dotenv
 
 load_dotenv()
 
-st.set_page_config(
-    page_title="AI Location Extractor",
-    page_icon="📍",
-    layout="wide",
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
+logger = logging.getLogger(__name__)
 
-st.title("📍 AI Location Extraction Demo")
-st.markdown("""
-Extract structured location data from job posting text using GPT-4o-mini.
+from utils.llm_extractor import LLMLocationExtractor
 
-This demo showcases how LLMs can replace manual data extraction tasks at ~$0.0002 per extraction.
-""")
+app = Flask(__name__, static_folder="static")
 
-# Sidebar for API key
-with st.sidebar:
-    st.header("Configuration")
-    api_key = st.text_input(
-        "OpenAI API Key",
-        type="password",
-        value=os.getenv("OPENAI_API_KEY", ""),
-        help="Enter your OpenAI API key. Get one at platform.openai.com"
-    )
+
+@app.route("/")
+def index():
+    """Serve the main visualization page."""
+    return send_from_directory("static", "index.html")
+
+
+@app.route("/static/<path:path>")
+def serve_static(path):
+    """Serve static files with proper MIME types."""
+    mime_types = {
+        ".css": "text/css",
+        ".js": "application/javascript",
+        ".json": "application/json",
+        ".svg": "image/svg+xml",
+        ".png": "image/png",
+        ".ico": "image/x-icon",
+        ".woff": "font/woff",
+        ".woff2": "font/woff2",
+    }
     
-    st.markdown("---")
-    st.markdown("""
-    ### How it works
-    1. Paste job posting text
-    2. Click "Extract Location"
-    3. View structured results
+    ext = os.path.splitext(path)[1].lower()
+    mimetype = mime_types.get(ext)
     
-    ### Cost
-    ~$0.0002 per extraction using GPT-4o-mini
-    """)
+    return send_from_directory("static", path, mimetype=mimetype)
 
-# Sample job posting for demo
-SAMPLE_JOB = """Software Engineer - Backend
 
-Location: Austin, TX 78701 (Hybrid)
+@app.route("/api/extract", methods=["POST"])
+def extract_location():
+    """
+    Extract location from job description using LLM.
 
-About the Role:
-We're looking for a talented backend engineer to join our growing team. You'll work on our core platform services, building scalable APIs and data pipelines.
+    Request body:
+        {
+            "job_description": "Full job description text...",
+            "country": "US"  // Optional, defaults to US
+        }
 
-Requirements:
-- 3+ years of experience with Python or Go
-- Experience with distributed systems
-- Strong communication skills
+    Response:
+        {
+            "success": true,
+            "location": "123 Main St, Austin, TX 78701",
+            "granularity": "full_street",
+            "explanation": "The job posting explicitly mentions...",
+            "confidence": 0.85,
+            "model": "gpt-4o-mini",
+            "processing_steps": [...]
+        }
+    """
+    try:
+        data = request.get_json()
 
-Benefits:
-- Competitive salary
-- Health, dental, and vision insurance
-- Flexible PTO
-- Remote work options available
+        if not data:
+            return jsonify({"success": False, "error": "No JSON data provided"}), 400
 
-Apply at careers@example.com
+        job_description = data.get("job_description", "").strip()
+        country = data.get("country", "US").upper()
 
-Example Corp
-123 Main Street, Suite 400
-Austin, TX 78701
-"""
+        if not job_description:
+            return jsonify({"success": False, "error": "job_description is required"}), 400
 
-# Main input area
-col1, col2 = st.columns(2)
+        steps = []
 
-with col1:
-    st.subheader("Input")
-    
-    if st.button("Load Sample"):
-        st.session_state.job_text = SAMPLE_JOB
-    
-    job_text = st.text_area(
-        "Job Posting Text",
-        value=st.session_state.get("job_text", ""),
-        height=400,
-        placeholder="Paste job posting text here..."
-    )
+        # Step 1: Parse input
+        step_start = time.time()
+        char_count = len(job_description)
+        word_count = len(job_description.split())
+        steps.append({
+            "step": "parsing",
+            "description": f"Parsed {word_count} words ({char_count} characters)",
+            "duration_ms": int((time.time() - step_start) * 1000),
+        })
 
-with col2:
-    st.subheader("Extraction Results")
-    
-    if st.button("Extract Location", type="primary", disabled=not api_key):
-        if not job_text.strip():
-            st.warning("Please enter some job posting text.")
-        else:
-            with st.spinner("Extracting location..."):
-                try:
-                    client = OpenAI(api_key=api_key)
-                    result = extract_location(job_text, client)
-                    
-                    st.success("Extraction complete!")
-                    
-                    st.metric("Location", result.answer)
-                    st.metric("Granularity", result.granularity)
-                    
-                    if result.is_remote:
-                        st.info(f"🏠 Remote/Hybrid indicators found: {', '.join(result.remote_indicators)}")
-                    
-                    with st.expander("Explanation"):
-                        st.write(result.explanation)
-                        
-                except Exception as e:
-                    st.error(f"Error: {str(e)}")
-    
-    if not api_key:
-        st.warning("Please enter your OpenAI API key in the sidebar.")
+        # Step 2: Initialize extractor
+        step_start = time.time()
+        try:
+            extractor = LLMLocationExtractor(country=country)
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 500
 
-st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: #666;">
-    Built by <a href="https://geoalchemist.com">Wes Porter</a> | 
-    <a href="https://github.com/wessport/ai-loc-extraction-demo">GitHub</a>
-</div>
-""", unsafe_allow_html=True)
+        steps.append({
+            "step": "initialization",
+            "description": f"Loaded {country} extraction model",
+            "duration_ms": int((time.time() - step_start) * 1000),
+        })
+
+        # Step 3: LLM Inference
+        step_start = time.time()
+        result = extractor.extract_location(job_description)
+        inference_time = int((time.time() - step_start) * 1000)
+        steps.append({
+            "step": "llm_inference",
+            "description": "GPT-4o-mini analyzed job description",
+            "duration_ms": inference_time,
+        })
+
+        # Step 4: Validation
+        step_start = time.time()
+        location = result.extracted_location
+        is_valid = location is not None and location.upper() != "UNKNOWN"
+        steps.append({
+            "step": "validation",
+            "description": f"Location {'found' if is_valid else 'not found'}",
+            "duration_ms": int((time.time() - step_start) * 1000),
+        })
+
+        # Find location position in text for highlighting
+        location_start = -1
+        location_end = -1
+        if location:
+            location_start = job_description.find(location)
+            if location_start >= 0:
+                location_end = location_start + len(location)
+            else:
+                lower_desc = job_description.lower()
+                lower_loc = location.lower()
+                location_start = lower_desc.find(lower_loc)
+                if location_start >= 0:
+                    location_end = location_start + len(location)
+
+        return jsonify({
+            "success": True,
+            "location": location,
+            "granularity": result.granularity,
+            "explanation": result.explanation,
+            "confidence": result.confidence_score,
+            "model": result.model_name,
+            "processing_steps": steps,
+            "highlight": {
+                "start": location_start,
+                "end": location_end,
+            } if location_start >= 0 else None,
+        })
+
+    except Exception as e:
+        logger.exception("Error during extraction")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/health", methods=["GET"])
+def health_check():
+    """Health check endpoint."""
+    return jsonify({
+        "status": "healthy",
+        "service": "ai-loc-extraction-demo",
+    })
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8050))
+    logger.info(f"Starting AI Location Extraction Demo on port {port}")
+    logger.info(f"Open http://localhost:{port} in your browser")
+    app.run(host="0.0.0.0", port=port, debug=True)

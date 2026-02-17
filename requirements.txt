@@ -1,3 +1,7 @@
-streamlit>=1.30.0
+# AI Location Extraction Demo
+# Python 3.10+
+
+flask>=3.0.0
 openai>=1.0.0
 python-dotenv>=1.0.0
+gunicorn>=21.0.0
