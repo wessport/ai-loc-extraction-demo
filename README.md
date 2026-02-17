@@ -63,6 +63,7 @@ ai-loc-extraction-demo/
 │   └── app.js             # Frontend logic & animations
 ├── utils/
 │   └── llm_extractor.py   # OpenAI API wrapper
+├── render.yaml            # Render deployment config
 ├── requirements.txt
 ├── .env.example
 └── README.md
@@ -77,25 +78,111 @@ ai-loc-extraction-demo/
    - Confidence score
    - AI explanation of the extraction
 
-## Cost
+---
 
-Using GPT-4o-mini:
-- ~$0.15 per 1M input tokens
-- ~$0.60 per 1M output tokens
-- **Approximately $0.0002 per job extraction**
+## OpenAI API Setup
 
-## Deployment
+This demo uses the OpenAI API with GPT-4o-mini.
 
-This app can be deployed on:
-- [Render](https://render.com) - Free tier available
-- [Railway](https://railway.app)
-- Any platform supporting Python/Flask
+### Getting an API Key
 
-For production, use gunicorn:
+1. Create an account at [platform.openai.com](https://platform.openai.com)
+2. Navigate to [API Keys](https://platform.openai.com/api-keys)
+3. Click "Create new secret key"
+4. Select **Service account** type (recommended for apps)
+5. Copy the key — you won't see it again
+
+### Free Tier
+
+New OpenAI accounts receive **$5 in free credits** (expires after 3 months). This covers approximately **25,000 extractions** at ~$0.0002 per job.
+
+### Cost Breakdown
+
+| Component | Cost |
+|-----------|------|
+| Input tokens | $0.15 per 1M tokens |
+| Output tokens | $0.60 per 1M tokens |
+| **Per extraction** | **~$0.0002** |
+
+### Setting Spending Limits
+
+To prevent unexpected charges:
+- Free tier: No credit card required, capped at $5 credit
+- Paid tier: Set monthly limits at [platform.openai.com/settings/organization/limits](https://platform.openai.com/settings/organization/limits)
+
+---
+
+## Deploying to Render (Free)
+
+This repo includes a `render.yaml` for one-click deployment.
+
+### Option 1: Blueprint Deploy
+
+1. Go to [render.com](https://render.com) and sign in
+2. Click **New** → **Blueprint**
+3. Connect your GitHub account and select this repo
+4. Render will auto-detect `render.yaml` and configure everything
+5. Add your `OPENAI_API_KEY` in the environment variables
+6. Click **Apply**
+
+### Option 2: Manual Setup
+
+1. Go to [render.com](https://render.com) → **New** → **Web Service**
+2. Connect your GitHub repo
+3. Configure:
+
+| Setting | Value |
+|---------|-------|
+| **Runtime** | Python |
+| **Build Command** | `pip install -r requirements.txt` |
+| **Start Command** | `gunicorn app:app --bind 0.0.0.0:$PORT` |
+| **Health Check Path** | `/api/health` |
+| **Instance Type** | Free |
+
+4. Add environment variable:
+   - Key: `OPENAI_API_KEY`
+   - Value: Your OpenAI API key
+
+5. Click **Deploy**
+
+### Free Tier Limitations
+
+Render's free tier:
+- Spins down after 15 minutes of inactivity
+- First request after spin-down takes ~30 seconds
+- 750 hours/month across all free services
+
+---
+
+## Alternative Deployment Options
+
+### Railway
+
+```bash
+railway login
+railway init
+railway add --name OPENAI_API_KEY
+railway up
+```
+
+### Local Production
 
 ```bash
 gunicorn app:app --bind 0.0.0.0:8050
 ```
+
+### Docker
+
+```dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8050"]
+```
+
+---
 
 ## License
 
