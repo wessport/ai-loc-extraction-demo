@@ -92,9 +92,11 @@ This demo uses the OpenAI API with GPT-4o-mini.
 4. Select **Service account** type (recommended for apps)
 5. Copy the key — you won't see it again
 
-### Free Tier
+### Pricing
 
-New OpenAI accounts receive **$5 in free credits** (expires after 3 months). This covers approximately **25,000 extractions** at ~$0.0002 per job.
+OpenAI API is pay-as-you-go. You'll need to add a payment method and purchase credits (minimum $5).
+
+The good news: this demo is extremely cheap to run. **$5 covers ~25,000 extractions**.
 
 ### Cost Breakdown
 
@@ -106,9 +108,9 @@ New OpenAI accounts receive **$5 in free credits** (expires after 3 months). Thi
 
 ### Setting Spending Limits
 
-To prevent unexpected charges:
-- Free tier: No credit card required, capped at $5 credit
-- Paid tier: Set monthly limits at [platform.openai.com/settings/organization/limits](https://platform.openai.com/settings/organization/limits)
+To prevent unexpected charges, set a monthly budget limit at [platform.openai.com/settings/organization/limits](https://platform.openai.com/settings/organization/limits).
+
+For example, set a $5/month cap — the API will reject requests once you hit that limit.
 
 ---
 
